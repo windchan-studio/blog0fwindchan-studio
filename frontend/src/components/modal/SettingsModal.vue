@@ -288,7 +288,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, computed } from 'vue'
+import { reactive, ref, computed, watch } from 'vue'
 import { useSettingsStore } from '@/stores/useSettingsStore'
 import { useGlobalModalStore } from '@/stores/globalModalStore'
 import { useAdminStore } from '@/stores/adminStore'
@@ -303,11 +303,32 @@ const { confirm, notify } = useToast()
 // 计算属性：是否为管理员
 const isAdmin = computed(() => adminStore.isAuthenticated)
 
-// 响应式绑定 Store 中的数据
+// 表单草稿副本：与 Store 解耦，仅在点击「保存更改」时提交，避免未保存的修改直接污染全局状态
 const settings = reactive({ ...settingsStore.typeWriter })
 const particleSettings = reactive({ ...settingsStore.particles })
 const paginationSettings = reactive({ ...settingsStore.pagination })
 const toastSettings = reactive({ ...settingsStore.toast })
+
+/**
+ * 将 Store 中的最新持久化配置同步至本地表单草稿。
+ */
+const syncDraftWithStore = () => {
+  Object.assign(settings, settingsStore.typeWriter)
+  Object.assign(particleSettings, settingsStore.particles)
+  Object.assign(paginationSettings, settingsStore.pagination)
+  Object.assign(toastSettings, settingsStore.toast)
+}
+
+// 由于 GlobalModals 常驻挂载，每次打开设置弹窗时重新从 Store 同步数据，
+// 防止用户上次修改后未点击「保存」直接关闭弹窗，导致下次打开时残留脏草稿
+watch(
+  () => modalStore.showSettings,
+  (isOpen) => {
+    if (isOpen) {
+      syncDraftWithStore()
+    }
+  },
+)
 
 const tabs = [
   { id: 'section-visual-effects', name: '视觉特效', icon: 'fas fa-wand-magic-sparkles' },
@@ -334,14 +355,19 @@ const scrollToSection = (id: string) => {
 
 // 保存逻辑
 const save = () => {
-  settingsStore.setTypeWriterSettings(settings)
-  settingsStore.setParticleSettings(particleSettings)
-  settingsStore.setPaginationSettings(paginationSettings)
-  settingsStore.setToastSettings(toastSettings)
+  const results = [
+    settingsStore.setTypeWriterSettings(settings),
+    settingsStore.setParticleSettings(particleSettings),
+    settingsStore.setPaginationSettings(paginationSettings),
+    settingsStore.setToastSettings(toastSettings),
+  ]
+  const allPersisted = results.every(Boolean)
 
   notify({
-    message: '设置已保存并生效了(☆▽☆)！',
-    type: 'success',
+    message: allPersisted
+      ? '设置已保存并生效了(☆▽☆)！'
+      : '设置已临时生效，但无法写入浏览器存储，刷新后可能丢失 QAQ',
+    type: allPersisted ? 'success' : 'warning',
   })
 
   setTimeout(() => modalStore.closeSettings(), 600)
@@ -356,20 +382,21 @@ const reset = async () => {
 
   if (!isConfirmed) return
 
-  settingsStore.resetTypeWriterSettings()
-  settingsStore.resetParticleSettings()
-  settingsStore.resetPaginationSettings()
-  settingsStore.resetToastSettings()
+  const results = [
+    settingsStore.resetTypeWriterSettings(),
+    settingsStore.resetParticleSettings(),
+    settingsStore.resetPaginationSettings(),
+    settingsStore.resetToastSettings(),
+  ]
+  const allPersisted = results.every(Boolean)
 
-  // 重新同步本地 reactive 数据
-  Object.assign(settings, settingsStore.typeWriter)
-  Object.assign(particleSettings, settingsStore.particles)
-  Object.assign(paginationSettings, settingsStore.pagination)
-  Object.assign(toastSettings, settingsStore.toast)
+  syncDraftWithStore()
 
   notify({
-    message: '已恢复默认设置',
-    type: 'success',
+    message: allPersisted
+      ? '已恢复默认设置'
+      : '已临时恢复默认设置，但无法写入浏览器存储，刷新后可能丢失 QAQ',
+    type: allPersisted ? 'success' : 'warning',
   })
 }
 </script>
