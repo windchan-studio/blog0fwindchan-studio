@@ -24,7 +24,7 @@
 ## 当前进度
 
 - [x] 产品定义（PRD v1.0） → [`docs/studio/PRD.md`](docs/studio/PRD.md)
-- [ ] 架构设计
+- [x] 架构设计（v1.0） → [`docs/studio/ARCHITECTURE.md`](docs/studio/ARCHITECTURE.md)
 - [ ] 编码实现
 - [ ] 测试
 - [ ] 文档
