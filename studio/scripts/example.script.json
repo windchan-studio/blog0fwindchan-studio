@@ -1,0 +1,164 @@
+{
+  "$schema": "../schema/script.schema.json",
+  "version": 1,
+  "id": "example",
+  "title": "个性化你的博客 · 专属赛博小屋改装指南",
+  "article": {
+    "slug": "how-to-customize-blog",
+    "category": "topics"
+  },
+  "video": {
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "zoom": 1.1,
+    "theme": "dark",
+    "defaults": {
+      "mood": "reading",
+      "gapMs": 300
+    }
+  },
+  "music": {
+    "tracks": [
+      {
+        "ref": "example-song",
+        "startAtMs": 0
+      }
+    ],
+    "crossfadeMs": 1500,
+    "announce": true,
+    "outro": {
+      "text": "今天的教程就到这里啦，下次见 awa"
+    }
+  },
+  "segments": [
+    {
+      "id": "intro",
+      "title": "开场",
+      "lines": [
+        {
+          "text": "大家好呀～今天带大家把风风博客改造成专属的赛博小屋 awa",
+          "mood": "cheer",
+          "actions": [
+            {
+              "type": "toc",
+              "expand": true
+            }
+          ]
+        },
+        {
+          "text": "右边展开的目录就是今天的改装路线图，我们一步步来哦",
+          "mood": "reading",
+          "actions": [
+            {
+              "type": "toc",
+              "expand": false,
+              "at": 2200
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fork",
+      "title": "第一步：Fork 仓库",
+      "tocAnchor": {
+        "heading": "零、第一步：把图纸复印到自己的背包里 (Fork 仓库)"
+      },
+      "lines": [
+        {
+          "text": "首先往下滚到第一步，先把仓库图纸复印到自己的背包里",
+          "duration": 2600,
+          "actions": [
+            {
+              "type": "scroll",
+              "to": {
+                "heading": "零、第一步：把图纸复印到自己的背包里 (Fork 仓库)"
+              },
+              "durationMs": 1200,
+              "easing": "easeInOut"
+            }
+          ]
+        },
+        {
+          "text": "注意！一定要先 **Fork** 再 Clone 自己的仓库，千万别直接绑原始仓库哦！",
+          "mood": "warning",
+          "note": "这里语气要重一点，提醒观众看代码块里的 URL",
+          "actions": [
+            {
+              "type": "highlight",
+              "target": {
+                "heading": "零、第一步：把图纸复印到自己的背包里 (Fork 仓库)",
+                "codeBlock": 1
+              },
+              "style": "glow"
+            }
+          ]
+        },
+        {
+          "text": "点击复制这行 `git clone` 命令，粘贴到终端跑起来",
+          "mood": "typing",
+          "actions": [
+            {
+              "type": "copy",
+              "target": {
+                "heading": "零、第一步：把图纸复印到自己的背包里 (Fork 仓库)",
+                "codeBlock": 1
+              },
+              "at": 800
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "config",
+      "title": "第二步：站点配置文件",
+      "tocAnchor": {
+        "heading": "二、核心装修区：站点配置文件 📝"
+      },
+      "lines": [
+        {
+          "text": "接下来我们来到核心装修区，打开 `site.config.ts` 文件",
+          "mood": "thinking",
+          "actions": [
+            {
+              "type": "scroll",
+              "to": {
+                "heading": "二、核心装修区：站点配置文件 📝"
+              },
+              "durationMs": 1400,
+              "easing": "easeInOut"
+            }
+          ]
+        },
+        {
+          "text": "把这里的 `title` 改成你的站点大名，保存就能立即生效啦！",
+          "mood": "proud",
+          "actions": [
+            {
+              "type": "highlight",
+              "target": {
+                "heading": "2.1 你的站点大名",
+                "codeBlock": 1
+              },
+              "style": "box"
+            }
+          ]
+        },
+        {
+          "text": "恭喜完成基础装修，撒花庆祝～",
+          "mood": "success",
+          "actions": [
+            {
+              "type": "toast",
+              "toastType": "success",
+              "text": "✨ 站点基础配置已完成",
+              "durationMs": 3200
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

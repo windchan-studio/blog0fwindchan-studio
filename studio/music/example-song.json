@@ -1,0 +1,57 @@
+{
+  "$schema": "../schema/music.schema.json",
+  "version": 1,
+  "id": "example-song",
+  "baked_at": "2026-11-07T12:00:00+08:00",
+  "source": {
+    "provider": "netease",
+    "song_id": 100001
+  },
+  "meta": {
+    "title": "微风与星空的序曲 (Example BGM)",
+    "artist": "WindChan Studio",
+    "album": "Cyber Aero Sessions",
+    "duration_ms": 45000
+  },
+  "lyrics": {
+    "has_translation": true,
+    "has_romaji": false,
+    "lines": [
+      {
+        "time_ms": 3000,
+        "duration_ms": 4500,
+        "text": "穿过玻璃窗的微风，吹醒沉睡的代码行",
+        "translation": "Breeze through the glass window wakes the sleeping lines of code",
+        "romaji": ""
+      },
+      {
+        "time_ms": 7500,
+        "duration_ms": 4800,
+        "text": "在夜色与星光之间，点亮一座赛博工坊",
+        "translation": "Between night and starlight, lighting up a cyber workshop",
+        "romaji": ""
+      },
+      {
+        "time_ms": 12300,
+        "duration_ms": 5200,
+        "text": "每一帧跳动的节拍，都记录着创造的魔法",
+        "translation": "Every beating frame records the magic of creation",
+        "romaji": ""
+      },
+      {
+        "time_ms": 17500,
+        "duration_ms": 6000,
+        "text": "把灵感写进剧本里，让故事随光影出发",
+        "translation": "Write inspiration into the script, let the story set off with light and shadow",
+        "romaji": ""
+      },
+      {
+        "time_ms": 23500,
+        "duration_ms": 6500,
+        "text": "愿每次驻足的目光，都能遇见温柔的回答",
+        "translation": "May every lingering gaze meet a gentle answer",
+        "romaji": ""
+      }
+    ]
+  }
+}

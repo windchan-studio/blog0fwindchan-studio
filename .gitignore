@@ -81,3 +81,14 @@ backend/static/*
 # Replace with your own before deploying.
 frontend/public/assets/images/wallpaper.webp
 frontend/public/assets/images/dark-theme-wallpaper.webp
+
+# ==========================
+# Studio (Local Production Assets)
+# ==========================
+studio/studio.config.json
+studio/scripts/*.script.json
+!studio/scripts/example.script.json
+studio/music/*
+!studio/music/example-song.json
+studio/output/
+
