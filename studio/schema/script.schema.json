@@ -1,0 +1,442 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://blog0fwindchan.local/studio/schema/script.schema.json",
+  "title": "WindChan Studio Script Schema",
+  "description": "《风风博客·制片厂》视频分镜与字幕剧本数据契约 v1.0",
+  "type": "object",
+  "required": ["version", "id", "title", "article", "segments"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "type": "integer",
+      "const": 1,
+      "description": "剧本格式版本号，当前固定为 1"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "minLength": 1,
+      "description": "剧本唯一 ID，用于 URL ?studio=<id> 与输出目录名"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "剧本标题"
+    },
+    "article": {
+      "type": "object",
+      "required": ["slug"],
+      "additionalProperties": false,
+      "properties": {
+        "slug": {
+          "type": "string",
+          "minLength": 1,
+          "description": "作为背景板的博客文章 slug"
+        },
+        "category": {
+          "type": "string",
+          "description": "可选文章分类别名"
+        }
+      }
+    },
+    "video": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "width": {
+          "type": "integer",
+          "minimum": 320,
+          "default": 1920
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 240,
+          "default": 1080
+        },
+        "fps": {
+          "type": "integer",
+          "enum": [24, 30],
+          "default": 30
+        },
+        "zoom": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 2.5,
+          "default": 1.1
+        },
+        "theme": {
+          "type": "string",
+          "enum": ["light", "dark"],
+          "default": "dark"
+        },
+        "defaults": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "mood": {
+              "$ref": "#/definitions/studioMood"
+            },
+            "gapMs": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 300
+            }
+          }
+        }
+      }
+    },
+    "music": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tracks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["ref"],
+            "additionalProperties": false,
+            "properties": {
+              "ref": {
+                "type": "string",
+                "minLength": 1,
+                "description": "对应 studio/music/<ref>.json 的烘焙音乐 ID"
+              },
+              "startAtMs": {
+                "type": "integer",
+                "minimum": 0,
+                "default": 0,
+                "description": "从歌曲内部第几毫秒开始播放"
+              }
+            }
+          }
+        },
+        "crossfadeMs": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 1500
+        },
+        "announce": {
+          "type": "boolean",
+          "default": true
+        },
+        "outro": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "text": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "segments": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/segment"
+      }
+    }
+  },
+  "definitions": {
+    "studioMood": {
+      "type": "string",
+      "enum": [
+        "typing",
+        "reading",
+        "sleepy",
+        "dizzy",
+        "shocked",
+        "warning",
+        "cheer",
+        "thinking",
+        "proud",
+        "success"
+      ]
+    },
+    "locator": {
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "object",
+          "required": ["heading"],
+          "additionalProperties": false,
+          "properties": {
+            "heading": {
+              "type": "string",
+              "minLength": 1
+            },
+            "nth": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "codeBlock": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        }
+      ]
+    },
+    "scrollTarget": {
+      "oneOf": [
+        {
+          "type": "number",
+          "minimum": 0
+        },
+        {
+          "type": "string",
+          "enum": ["top", "bottom"]
+        },
+        {
+          "$ref": "#/definitions/locator"
+        }
+      ]
+    },
+    "typewriterTarget": {
+      "oneOf": [
+        {
+          "type": "string",
+          "const": "end"
+        },
+        {
+          "$ref": "#/definitions/locator"
+        }
+      ]
+    },
+    "segment": {
+      "type": "object",
+      "required": ["id", "title", "lines"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tocAnchor": {
+          "$ref": "#/definitions/locator"
+        },
+        "lines": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/line"
+          }
+        }
+      }
+    },
+    "line": {
+      "type": "object",
+      "required": ["text"],
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "duration": {
+          "type": "integer",
+          "minimum": 100
+        },
+        "mood": {
+          "$ref": "#/definitions/studioMood"
+        },
+        "note": {
+          "type": "string"
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/action"
+          }
+        }
+      }
+    },
+    "action": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "scroll",
+            "typewriter",
+            "toc",
+            "highlight",
+            "copy",
+            "theme",
+            "toast",
+            "wait"
+          ]
+        },
+        "at": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "type": { "const": "scroll" } }
+          },
+          "then": {
+            "required": ["type", "to"],
+            "additionalProperties": false,
+            "properties": {
+              "type": { "const": "scroll" },
+              "at": { "type": "integer", "minimum": 0 },
+              "to": { "$ref": "#/definitions/scrollTarget" },
+              "offset": { "type": "number", "default": -120 },
+              "durationMs": { "type": "integer", "minimum": 0, "default": 1000 },
+              "easing": {
+                "type": "string",
+                "enum": ["linear", "easeInOut", "easeOut"],
+                "default": "easeInOut"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "type": { "const": "typewriter" } }
+          },
+          "then": {
+            "required": ["type", "until", "durationMs"],
+            "additionalProperties": false,
+            "properties": {
+              "type": { "const": "typewriter" },
+              "at": { "type": "integer", "minimum": 0 },
+              "until": { "$ref": "#/definitions/typewriterTarget" },
+              "durationMs": { "type": "integer", "minimum": 1 }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "type": { "const": "toc" } }
+          },
+          "then": {
+            "required": ["type"],
+            "additionalProperties": false,
+            "properties": {
+              "type": { "const": "toc" },
+              "at": { "type": "integer", "minimum": 0 },
+              "expand": { "type": "boolean" },
+              "highlight": { "$ref": "#/definitions/locator" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "type": { "const": "highlight" } }
+          },
+          "then": {
+            "required": ["type", "target"],
+            "additionalProperties": false,
+            "properties": {
+              "type": { "const": "highlight" },
+              "at": { "type": "integer", "minimum": 0 },
+              "target": { "$ref": "#/definitions/locator" },
+              "style": {
+                "type": "string",
+                "enum": ["glow", "box"],
+                "default": "glow"
+              },
+              "untilLineEnd": {
+                "type": "boolean",
+                "default": true
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "type": { "const": "copy" } }
+          },
+          "then": {
+            "required": ["type", "target"],
+            "additionalProperties": false,
+            "properties": {
+              "type": { "const": "copy" },
+              "at": { "type": "integer", "minimum": 0 },
+              "target": { "$ref": "#/definitions/locator" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "type": { "const": "theme" } }
+          },
+          "then": {
+            "required": ["type", "to"],
+            "additionalProperties": false,
+            "properties": {
+              "type": { "const": "theme" },
+              "at": { "type": "integer", "minimum": 0 },
+              "to": { "type": "string", "enum": ["light", "dark"] },
+              "durationMs": { "type": "integer", "minimum": 0, "default": 0 }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "type": { "const": "toast" } }
+          },
+          "then": {
+            "required": ["type", "text"],
+            "additionalProperties": false,
+            "properties": {
+              "type": { "const": "toast" },
+              "at": { "type": "integer", "minimum": 0 },
+              "text": { "type": "string", "minLength": 1 },
+              "toastType": {
+                "type": "string",
+                "enum": ["success", "info", "warning", "error"],
+                "default": "success"
+              },
+              "durationMs": { "type": "integer", "minimum": 100, "default": 4000 },
+              "position": {
+                "type": "string",
+                "enum": [
+                  "top-right",
+                  "top-left",
+                  "bottom-right",
+                  "bottom-left",
+                  "top-center"
+                ],
+                "default": "top-right"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "type": { "const": "wait" } }
+          },
+          "then": {
+            "required": ["type", "durationMs"],
+            "additionalProperties": false,
+            "properties": {
+              "type": { "const": "wait" },
+              "at": { "type": "integer", "minimum": 0 },
+              "durationMs": { "type": "integer", "minimum": 1 }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

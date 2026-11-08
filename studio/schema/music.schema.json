@@ -1,0 +1,108 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://blog0fwindchan.local/studio/schema/music.schema.json",
+  "title": "WindChan Studio Baked Music Schema",
+  "description": "《风风博客·制片厂》顶栏音乐预烘焙数据契约 v1.0",
+  "type": "object",
+  "required": ["version", "id", "baked_at", "source", "meta", "lyrics"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "type": "integer",
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "baked_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source": {
+      "type": "object",
+      "required": ["provider", "song_id"],
+      "additionalProperties": false,
+      "properties": {
+        "provider": {
+          "type": "string",
+          "enum": ["netease", "custom"]
+        },
+        "song_id": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "required": ["title", "artist", "album", "duration_ms"],
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "artist": {
+          "type": "string"
+        },
+        "album": {
+          "type": "string"
+        },
+        "duration_ms": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "lyrics": {
+      "type": "object",
+      "required": ["has_translation", "has_romaji", "lines"],
+      "additionalProperties": false,
+      "properties": {
+        "has_translation": {
+          "type": "boolean"
+        },
+        "has_romaji": {
+          "type": "boolean"
+        },
+        "lines": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "time_ms",
+              "duration_ms",
+              "text",
+              "translation",
+              "romaji"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "time_ms": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "duration_ms": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "text": {
+                "type": "string"
+              },
+              "translation": {
+                "type": "string"
+              },
+              "romaji": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

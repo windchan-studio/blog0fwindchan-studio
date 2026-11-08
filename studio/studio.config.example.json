@@ -1,0 +1,7 @@
+{
+  "ffmpegPath": "ffmpeg",
+  "defaultCodec": "libx264",
+  "defaultFps": 30,
+  "baseUrl": "http://localhost:5173",
+  "outputDir": "studio/output"
+}

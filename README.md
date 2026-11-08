@@ -1,209 +1,123 @@
-# 🍃 风风博客 (Wind Chan's Blog)
+# 🎬 风风博客·制片厂 (blog0fwindchan-studio)
 
-![Vue.js](https://img.shields.io/badge/vuejs-%2335495e.svg?style=flat&logo=vuedotjs&logoColor=%234FC08D)
-![TypeScript](https://img.shields.io/badge/typescript-%23007ACC.svg?style=flat&logo=typescript&logoColor=white)
-![Flask](https://img.shields.io/badge/flask-%23000.svg?style=flat&logo=flask&logoColor=white)
-![Python](https://img.shields.io/badge/python-3670A0?style=flat&logo=python&logoColor=ffdd54)
-![License](https://img.shields.io/badge/license-CC%20BY--NC--SA%204.0-lightgrey)
+`blog0fwindchan-studio` 是基于 [风风博客 (Blog0fwindchan)](https://github.com/futurelesswindchan/blog0fwindchan) 派生的**本地教学视频制片厂系统**。
 
-> 欢迎来到风酱的赛博次元！这里是一个基于 Vue 3 + TypeScript + Flask 打造的高颜值全栈个人博客系统 ✨
->
-> A highly customizable, aesthetic full-stack personal blog built with Vue 3, TypeScript & Flask.
-
-<br/>
-
-<table>
-  <tr>
-    <td><img width="445" alt="preview_light" src=".github/images/blog_preview1.png" /></td>
-    <td><img width="445" alt="preview_dark" src=".github/images/blog_preview2.png" /></td>
-  </tr>
-  <tr>
-    <td align="center">☀️ 充满元气的浅色模式</td>
-    <td align="center">🌙 静谧优雅的深色模式</td>
-  </tr>
-</table>
+本项目在保留原博客全栈架构与 Aero 玻璃拟态视觉体系的基础上，将交互式 Web 页面收敛为关于帧时钟 $t$ 的纯函数状态机：通过编写声明式 JSON 剧本，驱动博客文章页面自动执行滚动、打字机揭示、代码块高亮与复制反馈、目录桌宠双行字幕与教学情绪播报、顶栏预烘焙歌词同步，并最终通过 Playwright 与 FFmpeg 内存管道逐帧渲染为分段无声 MP4 视频素材与时间码清单（`manifest.json`），供后期非线性编辑软件（如 Premiere Pro）对齐配音与背景音乐。
 
 ---
 
-## 📖 赛博小屋导览 (项目简介)
+## 1. 与 upstream 原仓库的关系
 
-这可是一座兼具绝赞美术风格与丝滑交互的个人创作工坊哦！~~风酱你怎么敢好意思这么吹嘘自己的啦OAO！~~\
-从 UI 设计到全栈开发，全由风酱一人精心打造。项目采用了前后端分离架构，还自带一个功能完整的“舰桥后台”(CMS)，让你只需在浏览器里点点点，就能轻松创作和管理文章啦！
+| 维度     | upstream（原仓库）                                                                        | studio（本仓库）                                                                                  |
+| :------- | :---------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------ |
+| 仓库地址 | [futurelesswindchan/blog0fwindchan](https://github.com/futurelesswindchan/blog0fwindchan) | [windchan-studio/blog0fwindchan-studio](https://github.com/windchan-studio/blog0fwindchan-studio) |
+| 核心分支 | `main`                                                                                    | `studio`（制片厂开发分支）、`main`（与 upstream 同步）                                            |
+| 运行定位 | 公网生产环境个人博客                                                                      | 本地视频渲染工作站，仅在本地回环环境运行，不部署至公网                                            |
+| 数据存储 | 生产环境 `blog.db`                                                                        | 本地拍片专用 `blog.db`（文章内容与锚点可按剧本需求自由调整）                                      |
+| 合并策略 | —                                                                                         | `upstream → studio` **单向合并**；studio 的代码、配置与资产永不回推 upstream                      |
 
-**🌟 博客の超能力（吹牛时刻awa）：**
-
-- **🔮 赛博玻璃拟态美学**：深度定制 UI，实现类 Windows Aero 的柔和磨砂玻璃质感，有~~迫真~~漂亮光影反射哦！并且支持一键切换亮/暗主题~
-- **✨ 所见即所得编辑器**：边写边看，编辑/预览无缝切换，再也不用盲猜渲染效果啦。
-- **🛡️ 企业级 JWT 守护结界**：Access Token + Refresh Token 双令牌机制，配合前端 Axios 拦截器，实现登录状态“无痛续杯”！
-- **🎁 开箱即用的新手礼包**：内置数据迁移法阵，一键即可将示例文章和图片资源导入，再也不用担心 Clone 下来后不能直接看效果啦！>w<
+- **低侵入集成**：制片厂新增逻辑全部收拢于 `studio/`、`frontend/src/studio/`、`frontend/scripts/` 与 `backend/studio/` 目录；对 upstream 既有文件仅保留最小化的插件挂载、条件渲染守卫与主题覆盖钩子，以降低跨仓库合并冲突。
+- **问题归属边界**：日常浏览与公网共用的缺陷在 upstream 仓库修复后合并回本仓库；仅服务于视频录制的特性与样式规则留在本仓库 `studio` 分支。
 
 ---
 
-## 🛠️ 技术栈
+## 2. 已实现的核心机制与子系统
 
-<details>
-<summary><b>✨ 点击展开并看看博客的“核心驱动齿轮”(也就是技术栈列表啦) awa~</b></summary>
+### 2.1 纯函数时间线编译与状态推导引擎 (`frontend/src/studio/engine/`)
 
-### 🎨 前端魔法阵 (Frontend)
+- **两阶段模型**：剧本加载时由 `TimelineCompiler` 将顺序台词时长（支持手写毫秒数或基于中英文字数的语速公式推算）与动作偏移编译为绝对时间线 `CompiledTimeline`；任意时刻 $t$ 由纯函数 `deriveFrameState(timeline, t)` 在 $O(\log N)$ 时间内直接导出完整画面快照 `StudioFrameState`。
+- **帧时钟接管 (`FrameClock`)**：提供全局唯一时间源 `currentTimeMs`，支持实时预览播放、暂停、任意时间点 `seek(t)`、逐帧步进（`±1` 帧）与分段区间循环；每次 `seek(t)` 均等待 Vue DOM 更新与双层 `requestAnimationFrame` 光栅化完成，确保离线截帧的确定性。
+- **确定性背景与动效**：冻结演播室模式下非受控的 CSS `transition`，所有过渡进度（气泡入退场、目录抽屉展开、歌词渐变、情绪动效）均由 $t$ 的数学插值直接绑定为行内样式；背景粒子层（`ParticleLayer`）由基于剧本 ID 的固定种子伪随机数生成器（`mulberry32`）与周期折叠公式驱动。
+- **三层剧本校验 (`ScriptValidator`)**：
+  - **L1（静态结构）**：校验 JSON 结构、必填项、枚举值与定位器语法，输出精确字段路径（如 `segments[1].lines[2].mood`）；
+  - **L2（时间线语义）**：检测 `scroll` 区间重叠、跨句动作提示、`bottom-right` Toast 遮挡警告与预烘焙音乐文件存在性；
+  - **L3（运行时 DOM）**：基于真实渲染后的文章 DOM 校验标题与章节内局部第 $N$ 个代码块（`resolveLocator`）是否存在、26px 字幕是否超过 2 行上限，以及高亮目标是否与右下角字幕框发生视口重叠。
 
-| 技术                           | 描述                                           |
-| :----------------------------- | :--------------------------------------------- |
-| `Vue 3`                        | 核心框架，全面使用超好用的 Composition API owo |
-| `TypeScript`                   | 满级类型安全感，将 Bug 扼杀在摇篮里！          |
-| `Vite`                         | 极速构建与开发服务器 (快到飞起 🚀)             |
-| `Pinia`                        | 全局状态的贴心大管家                           |
-| `Vue Router 4`                 | 页面穿梭机与后台权限结界守护                   |
-| `Axios`                        | HTTP 快递员，自带 JWT 无感刷新小饼干拦截器     |
-| `Sass (SCSS)`                  | 给 CSS 穿上漂亮的小裙子 (预处理)               |
-| `markdown-it` + `highlight.js` | 让 Markdown 和代码块闪闪发光的渲染引擎         |
+### 2.2 演播室舞台与专用 UI 组件 (`frontend/src/studio/components/` & `bridge/`)
 
-### ⚙️ 后端蒸汽机 (Backend)
+- **零侵入视觉清场 (`studioStage.css`)**：URL 携带 `?studio=<剧本id>` 时在 `<html>` 挂载 `data-studio-mode="true"`，隐藏侧边导航栏、顶栏非歌词元素、返回按钮、文章元信息行、篇尾导航与滚动指示器，并对主舞台施加 `zoom` 缩放（默认 `1.1`）与鼠标交互冻结。
+- **演播室字幕与步骤条 (`StudioTocPet.vue`)**：固定于成片右下角（`640px` 宽、`26px` 字号、最多 2 行），支持 `**加粗**` 与 `` `行内代码` `` 安全渲染；内置 10 种情绪配色与帧时钟驱动动效（含新增教学情绪 `warning`、`cheer`、`thinking`、`proud`、`success`）、400ms 贝塞尔目录折叠抽屉及底部 `segment` 级教学步骤进度条。
+- **顶栏单行歌词条 (`StudioLyricBar.vue`)**：内置与 Python 端严格同构的 TS 版 `matchSentence` 二分匹配器，支持多曲目歌单顺序连播、歌间交叉渐变（`crossfadeMs`）、前奏/间奏 `♪` 呼吸动画，以及歌单结束 15 秒后自动淡入片尾结束语（`outro`）。
+- **状态隔离与系统通知拦截 (`studioPiniaPlugin.ts`)**：
+  - 拦截演播室期间所有经由 `useToastStore.add()` 触发的博客自发通知，转入导演控制栏消息队列，画面内仅由 `StudioToastLayer.vue` 渲染剧本定时 Toast 与每首歌起点的自动署名 Toast（`♪ 歌名 - 歌手`）；
+  - 备份并重置 `useSettingsStore` 为演播室标准参数，屏蔽 `localStorage` 落盘与跨标签页 `storage` 事件干扰；通过 `setStudioThemeOverride` 接管全局亮暗主题切换。
 
-| 技术                 | 描述                                       |
-| :------------------- | :----------------------------------------- |
-| `Python 3.10+`       | 后端驱动核心语言                           |
-| `Flask`              | 轻量又强大的 Web 框架                      |
-| `SQLite`             | 乖巧轻量的嵌入式数据库                     |
-| `SQLAlchemy 2.0`     | ORM 魔法，优雅定义数据模型                 |
-| `Flask-JWT-Extended` | 颁发和管理双重身份牌 (Token) 的门卫        |
-| `Flask-Limiter`      | 阻挡疯狂点击的防洪大坝 (全局限流)          |
-| `Marshmallow`        | 请求数据的安检员与打包员 (序列化)          |
-| `python-dotenv`      | 环境变量小夹万                             |
-| `Werkzeug ProxyFix`  | 能够看破反向代理，抓住用户真实 IP 的透视镜 |
+### 2.3 音乐预烘焙后端与导演预览控制栏 (`backend/studio/` & `DirectorBar.vue`)
 
-**同时，后端模块采用超整洁的模块化蓝图结构哦：**
+- **本地音乐烘焙接口 (`/api/studio/music/*`)**：通过 Flask Blueprint 挂载并强制校验本机回环 IP（`127.0.0.1` / `::1`）访问且豁免全局限流；使用 `requests` 同步抓取网易云歌曲详情与原文/译文/罗马音歌词，经 `LyricParser` 合并计算行时长后写入 `studio/music/<ref>.json`，确保预览与渲染阶段零外部网络请求。
+- **SMTC 三层降级识别 (`smtc_helper.py`)**：支持通过 Windows `winsdk` 读取系统当前播放曲目，未安装 `winsdk` 时自动回退至 Win32 窗口标题扫描，非 Windows 环境下自动隐藏识别入口。
+- **导演实时预览控制栏 (`DirectorBar.vue` & `MusicBakePanel.vue`)**：仅在 URL 附加 `&director=1` 时激活（离线渲染天然不入画）。提供分段色块、台词刻度（含校验错误标红与悬停详情）、播放头拖拽、快捷键控制（`Space`、`←/→`、`Shift+←/→`、`[/]`、`1~9`、`L`、`H`）、被拦截系统消息查看器、可视化音乐烘焙面板，以及基于 Vite WebSocket 的剧本保存原地热重载。
+
+### 2.4 分段离线渲染管线 (`frontend/scripts/studio-render.mjs`)
+
+- **内存管道直通编码**：通过 Playwright Chromium Headless 加载目标文章演播室页面，按帧调用 `window.__studio.seek(t)` 并将截图 PNG Buffer 经由 `image2pipe` 直通写入 FFmpeg `stdin` 编码输出 `<序号>-<分段id>.mp4`，全程不产生磁盘临时图片文件。
+- **按段重渲与增量跳过**：支持 `--segment <id1,id2>` 仅渲染指定分段，或通过 `--incremental` 比对分段确定性 SHA-256 哈希（涵盖视频配置、文章正文哈希、分段起始时间、进入分段时的持续状态快照、分段剧本定义与音乐切片）自动跳过未变更分段。
+- **渲染清单 (`manifest.json`)**：每次渲染自动输出总帧数、歌单时间线及各分段的起止帧、哈希值与 `music_cues`（精确记录每首歌在分段内的起止毫秒、全片起始毫秒与歌曲内部裁剪毫秒），用于后期音轨对齐。
+
+---
+
+## 3. 目录结构
 
 ```plain
-backend/
-├── app.py          # 应用工厂 create_app() + 魔法咒语(CLI命令)注册
-├── extensions.py   # db / jwt / limiter 等扩展法器的存放处
-├── models.py       # SQLAlchemy 模型图纸
-├── schemas.py      # Marshmallow 校验规则
-└── routes/
-    ├── __init__.py # register_routes() 蓝图集结地
-    ├── public.py   # 所有人都能看的公开卷轴 (只读接口)
-    ├── auth.py     # 身份验证与 Token 刷新处
-    ├── admin.py    # 仅限管理员进入的后台密室
-    └── assets.py   # 图片等宝物上传通道
-```
-
-</details>
-
----
-
-## 🚀 启动！本地开发小冒险
-
-> 💡 **风酱小贴士：** 本节是教大家如何在自己的小电脑上，把博客以本地开发模式跑起来哦！\
-> 如果你想把博客部署到广阔的公网服务器上，请直接搭乘电梯前往 [教程引流](#-藏书阁进阶修炼秘籍) 区域寻找相应的魔法卷轴~
-
-### 🎒 出发前的行囊准备 (前置依赖)
-
-- `Node.js` v18.0+
-- `Python` 3.10+
-- `Git`
-
-### Step 1：唤醒后端大主子
-
-```bash
-# 克隆项目到本地
-git clone https://github.com/futurelesswindchan/blog0fwindchan.git
-cd blog0fwindchan/backend
-
-# 打造一个专属的魔法结界（虚拟环境）
-python3 -m venv venv
-
-# 激活结界 (Windows 玩家走这里)
-.\venv\Scripts\activate
-# 激活结界 (Linux / macOS 玩家走这里)
-source venv/bin/activate
-
-# 召唤所有需要的法宝（安装依赖）
-pip install -r requirements.txt
-```
-
-在 `backend/` 目录下新建一个隐秘的 `.env` 文件，写下这几行配置：
-
-```properties
-FLASK_DEBUG=True
-JWT_SECRET_KEY=<这里填一串至少32字符的随机乱码，可以用下面的咒语生成哦>
-CORS_ORIGINS=http://localhost:5173
-```
-
-> **🔑 生成安全密钥的咒语：**
->
-> ```bash
-> python -c "import secrets; print(secrets.token_hex(32))"
-> ```
-
-初始化数据库并创建最高权限的魔法师（管理员）账号：
-
-```bash
-# 建表 + 写入默认分类
-flask db init
-
-# 创建管理员账号（请根据终端提示，乖乖输入用户名和密码哦）
-flask admin create
-```
-
-（🎁 选做）拆开新手礼包，导入示例文章和数据：
-
-```bash
-python init_db.py
-```
-
-> ⚠️ **小心哦！ `init_db.py` 是在清空 Article、Category、Friend、Artwork 表后重新导入数据的！**\
-> 它只适合第一次搬家时做示例演示使用——如果是已经在线上运行，或存有个人数据的博客，千万别碰它呀 QAQ！
-
-最后，点火启动后端引擎：
-
-```bash
-python app.py
-# 如果看到 Running on http://127.0.0.1:5000，就说明成功啦！(撒花🎉)
-```
-
-### Step 2：点亮前端展示橱窗
-
-请保持后端的终端窗口开着，另外再开一个新的终端窗口：
-
-```bash
-cd frontend
-npm install
-npm run dev
-# 到这一步，前端橱窗已经在 http://localhost:5173 亮起啦，快去浏览器里看看吧！
+blog0fwindchan-studio/
+├── STUDIO_GUIDE.md                     # 制片厂完整启动、配置与使用指南
+├── docs/studio/
+│   ├── PRD.md                          # 产品需求文档 v1.0
+│   └── ARCHITECTURE.md                 # 系统架构设计文档 v1.0
+├── studio/                             # 制片厂本地资产与数据契约目录
+│   ├── studio.config.example.json      # 渲染器与 FFmpeg 配置模板
+│   ├── schema/
+│   │   ├── script.schema.json          # 剧本 JSON Schema (Draft-07)
+│   │   └── music.schema.json           # 预烘焙音乐 JSON Schema (Draft-07)
+│   ├── scripts/
+│   │   └── example.script.json         # 示例分镜剧本（其余私人剧本已被 .gitignore 忽略）
+│   ├── music/
+│   │   └── example-song.json           # 示例预烘焙歌词（其余曲库缓存已被 .gitignore 忽略）
+│   └── output/                         # 分段 MP4 与 manifest.json 输出目录（被 .gitignore 忽略）
+├── backend/
+│   ├── requirements-studio.txt         # 制片厂后端专属依赖 (requests, winsdk)
+│   └── studio/                         # 音乐预烘焙 Flask 蓝图模块
+│       ├── __init__.py                 # 蓝图定义与 localhost 访问守卫
+│       ├── routes.py                   # /api/studio/music/* 路由实现
+│       ├── lyric_parser.py             # LRC 解析、双语对齐与 match_sentence 算法
+│       ├── lyric_baker.py              # 网易云搜歌、抓词与 JSON 落盘服务
+│       └── smtc_helper.py              # Windows SMTC / Win32 窗口标题曲目识别
+└── frontend/
+    ├── scripts/
+    │   └── studio-render.mjs           # Playwright -> FFmpeg 分段离线渲染 CLI
+    └── src/studio/                     # 演播室前端核心模块
+        ├── vitePluginStudioFs.ts       # /__studio_fs/ 静态文件挂载与剧本热重载插件
+        ├── types/                      # 剧本、音乐与逐帧状态快照 TS 类型定义
+        ├── engine/                     # 帧时钟、编译器、状态推导、定位器、歌词匹配与校验器
+        ├── bridge/                     # Pinia 隔离插件、DOM 舞台驱动与 window.__studio 桥接
+        ├── stores/useStudioStore.ts    # 演播室状态管理仓
+        ├── styles/studioStage.css      # 演播室全局清场与动画冻结样式表
+        └── components/                 # StudioRoot / StudioTocPet / StudioLyricBar / DirectorBar 等
 ```
 
 ---
 
-## 📚 藏书阁：进阶修炼秘籍
+## 4. 文档与快速导航
 
-想把博客彻底染上自己的色彩？或者想把它挂到公网服务器上让全世界看到？\
-没问题！风酱已经在仓库里为你准备好了全套的保姆级教程！
+关于本项目的安装部署、制片工作流与设计规范，请查阅以下专题文档：
 
-导入示例数据（`python init_db.py`）后，可以在博客的“奇怪杂谈”分类中直接阅读；\
-也可以在此仓库的 `frontend/legacy_data/article/topics/` 目录下翻阅原味 Markdown 卷轴哦。
-
-| 魔法卷轴                                                                            | 卷轴内容                                                     |
-| :---------------------------------------------------------------------------------- | :----------------------------------------------------------- |
-| [个性化你的博客](frontend/legacy_data/article/topics/how-to-customize-blog.md)      | Fork 仓库、换昵称、换头像、换壁纸、调主题色...打造专属小窝！ |
-| [部署到云服务器](frontend/legacy_data/article/topics/how-to-deploy-on-vps.md)       | Nginx + Gunicorn 生产部署，附赠超强安全防御结界指南          |
-| [日常更新与维护](frontend/legacy_data/article/topics/how-to-update-and-maintain.md) | 代码更新流程、打理博客的常用咒语(CLI)、遇到 Bug 怎么办       |
+| 文档名称                                                                             | 内容概述                                                                                          |
+| :----------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------ |
+| 📖 [**启动与配置指南 (`STUDIO_GUIDE.md`)**](STUDIO_GUIDE.md)                         | 前后端环境安装、`studio.config.json` 配置、导演控制栏操作、音乐预烘焙、剧本编写与离线渲染完整教程 |
+| 🎨 [**产品需求文档 (`docs/studio/PRD.md`)**](docs/studio/PRD.md)                     | 制片厂产品定位、功能分档、剧本与烘焙音乐数据契约、UI/UX 规范与验收标准                            |
+| 🏛️ [**系统架构设计 (`docs/studio/ARCHITECTURE.md`)**](docs/studio/ARCHITECTURE.md)   | $\text{Frame}(t)$ 纯函数推导模型、确定性接管矩阵、低侵入集成边界与离线渲染管线设计                |
+| 🍃 [**Upstream 博客本体文档**](https://github.com/futurelesswindchan/blog0fwindchan) | 风风博客本体的基础功能、技术栈说明、日常更新维护与许可协议                                        |
 
 ---
 
-## 📄 冒险者公会条约 (使用许可)
+## 5. 当前工程进度
 
-本项目**代码部分**采用 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh) 协议进行许可。\
-非常欢迎大家来学习、分享和二次改装，但请一定要**注明出处**，并且**绝对不可以**用于商业赚钱哦！
-
-⚠️ **风酱的严肃提醒：关于美术资产的版权**
-
-仓库里包含的所有美术资产（包括可爱的角色立绘、网站 Logo/Icon 等）都是有版权严格保护的，**不适用**开源协议！
-
-你可以 Clone 下来在自己的电脑上跑着玩、学习和测试。\
-但是，**如果你要把博客部署到公网上作为自己的公开站点，请必须、一定、绝对要把这些美术资源替换成你自己的图片哦！** 拜托拜托啦！(双手合十 qwq)
+- [x] 产品定义（PRD v1.0） → [`docs/studio/PRD.md`](docs/studio/PRD.md)
+- [x] 系统架构设计（v1.0） → [`docs/studio/ARCHITECTURE.md`](docs/studio/ARCHITECTURE.md)
+- [x] 编码实现（M1 数据契约与底座 / M2 纯函数引擎 / M3 演播室舞台与组件 / M4 音乐烘焙后端与导演控制栏 / M5 分段离线渲染管线）
+- [x] 启动与配置文档 → [`STUDIO_GUIDE.md`](STUDIO_GUIDE.md)
+- [ ] 自动化测试与跨语言对拍验证
 
 ---
 
-> **Copyright © 2026 没有未来的小风酱 (futurelesswindchan)**
-
-Made with ♡ and lots of —⊂ZZZ⊃.
+**Copyright © 2026 没有未来的小风酱 (futurelesswindchan)**

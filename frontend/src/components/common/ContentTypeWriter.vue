@@ -23,6 +23,8 @@
 import { useReadingProgress } from '@/composables/useReadingProgress'
 import { useArticleContent } from '@/composables/useArticleContent'
 import { useCodeHighlight } from '@/composables/useCodeHighlight'
+import { useStudioStore } from '@/studio/stores/useStudioStore'
+import { registerStudioTypewriterController } from '@/studio/bridge/pageStageDriver'
 import { ref, watch, nextTick, onUnmounted, computed } from 'vue'
 import { prepare, layout } from '@chenglou/pretext'
 
@@ -58,6 +60,7 @@ const props = withDefaults(defineProps<Props>(), {
 // 引入文章内容相关的工具函数和状态
 const { sanitizeHtml } = useArticleContent()
 const { codeHighlightOptions } = useCodeHighlight()
+const studioStore = useStudioStore()
 
 /**
  * 预初始化 markdown-it 实例
@@ -311,8 +314,22 @@ const startTyping = async () => {
   cursorElement.className = 'typing-cursor'
   cursorElement.textContent = '<<<'
 
+  // 构建演播室可跳转权重索引表 (ARCHITECTURE §4.4)
+  buildStudioUnitsTable()
+
   // 此时 DOM 结构已安全成型且占好坑位，解除全局透明隐藏
   isReady.value = true
+
+  // 演播室模式下不启动自走 rAF 循环，改由帧时钟同步驱动快照
+  if (studioStore.isStudioMode) {
+    const state = studioStore.currentFrameState
+    if (state) {
+      applyStudioSnapshot(state.revealedUnits, state.typewriterEnabled)
+    } else {
+      finishTyping()
+    }
+    return
+  }
 
   // 若用户禁用了打字机特效，直接全量渲染
   if (!props.enabled) {
@@ -396,6 +413,116 @@ const startTyping = async () => {
   }, props.initialDelay)
 }
 
+// --- 演播室可跳转打字机快照表 (ARCHITECTURE §4.4) ---
+let actionEndUnits: number[] = []
+let studioTotalUnits = 0
+let elementUnitMap = new WeakMap<HTMLElement, number>()
+
+const buildStudioUnitsTable = () => {
+  actionEndUnits = []
+  elementUnitMap = new WeakMap<HTMLElement, number>()
+  let sum = 0
+  for (let i = 0; i < actions.length; i++) {
+    const item = actions[i]!
+    const weight = item.type === 'text' ? Math.max(1, item.text.length) : 1
+    sum += weight
+    actionEndUnits.push(sum)
+    if (item.type === 'reveal') {
+      elementUnitMap.set(item.node, sum)
+    }
+  }
+  studioTotalUnits = Math.max(1, sum)
+}
+
+const applyStudioSnapshot = (targetUnits: number, enabled: boolean) => {
+  if (actions.length === 0) return
+  if (animationFrameId) cancelAnimationFrame(animationFrameId)
+  if (timeoutId) clearTimeout(timeoutId)
+
+  if (!enabled || targetUnits >= studioTotalUnits) {
+    isTypingMode.value = false
+    isTyping.value = false
+    lockedHeight.value = 0
+    if (parentElement) {
+      parentElement.style.clipPath = 'none'
+      parentElement.style.transition = ''
+    }
+    if (cursorElement && cursorElement.parentNode) {
+      cursorElement.parentNode.removeChild(cursorElement)
+    }
+    for (let i = 0; i < actions.length; i++) {
+      const act = actions[i]!
+      if (act.type === 'reveal') {
+        act.node.classList.remove('typing-hidden-block')
+        act.node.classList.add('typing-reveal-block')
+        if (/^H[1-6]$/i.test(act.node.tagName) && act.node.id) {
+          unlockHeading(act.node.id)
+        }
+      } else {
+        act.node.nodeValue = act.text
+      }
+    }
+    globalProgress.value = 100
+    return
+  }
+
+  isTypingMode.value = true
+  isTyping.value = true
+  resetUnlockedHeadings()
+  if (parentElement) {
+    parentElement.style.clipPath = 'none'
+  }
+
+  let cursorAnchorNode: Text | null = null
+  for (let i = 0; i < actions.length; i++) {
+    const act = actions[i]!
+    const prevEnd = i === 0 ? 0 : actionEndUnits[i - 1]!
+    const currEnd = actionEndUnits[i]!
+
+    if (targetUnits >= currEnd) {
+      if (act.type === 'reveal') {
+        act.node.classList.remove('typing-hidden-block')
+        act.node.classList.add('typing-reveal-block')
+        if (/^H[1-6]$/i.test(act.node.tagName) && act.node.id) {
+          unlockHeading(act.node.id)
+        }
+      } else {
+        act.node.nodeValue = act.text
+        cursorAnchorNode = act.node
+      }
+    } else if (targetUnits > prevEnd && act.type === 'text') {
+      const chars = Math.max(0, Math.floor(targetUnits - prevEnd))
+      act.node.nodeValue = act.text.slice(0, chars)
+      cursorAnchorNode = act.node
+    } else {
+      if (act.type === 'reveal') {
+        act.node.classList.remove('typing-reveal-block')
+        act.node.classList.add('typing-hidden-block')
+      } else {
+        act.node.nodeValue = ''
+      }
+    }
+  }
+
+  if (cursorElement && cursorAnchorNode && cursorAnchorNode.parentNode) {
+    cursorAnchorNode.parentNode.insertBefore(
+      cursorElement,
+      cursorAnchorNode.nextSibling,
+    )
+  } else if (cursorElement && cursorElement.parentNode) {
+    cursorElement.parentNode.removeChild(cursorElement)
+  }
+
+  globalProgress.value = Math.min(100, (targetUnits / studioTotalUnits) * 100)
+}
+
+registerStudioTypewriterController({
+  getTotalUnits: () => studioTotalUnits || 1000,
+  getUnitsForElement: (el: HTMLElement) =>
+    elementUnitMap.get(el) ?? (studioTotalUnits || 1000),
+  applySnapshot: applyStudioSnapshot,
+})
+
 // 监听内容变化，重置并重启打字机
 watch(() => sanitizedHtml.value, startTyping, { immediate: true })
 
@@ -403,14 +530,17 @@ watch(() => sanitizedHtml.value, startTyping, { immediate: true })
 watch(
   () => props.enabled,
   (newVal) => {
-    if (!newVal && isTyping.value) {
+    if (!newVal && isTyping.value && !studioStore.isStudioMode) {
       finishTyping()
     }
   },
 )
 
 // 组件销毁前清理所有副作用
-onUnmounted(cleanup)
+onUnmounted(() => {
+  registerStudioTypewriterController(null)
+  cleanup()
+})
 </script>
 
 <style scoped>

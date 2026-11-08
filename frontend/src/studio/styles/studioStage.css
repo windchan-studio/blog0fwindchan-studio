@@ -1,0 +1,61 @@
+/**
+ * 演播室全局舞台清场与动画冻结样式表（studioStage.css）。
+ *
+ * 仅在根节点 `<html data-studio-mode="true">` 激活时生效，
+ * 退出演播室模式后移除该属性即可零残留恢复日常浏览体验（ARCHITECTURE §2.3 & PRD §7.0）。
+ */
+
+/* === 1. 隐藏非舞台 UI 元素 (PRD §7.0) === */
+html[data-studio-mode="true"] .nav-panel,
+html[data-studio-mode="true"] .reflection-mask.nav-mask,
+html[data-studio-mode="true"] .title-bar .left-group,
+html[data-studio-mode="true"] .title-bar .right-group,
+html[data-studio-mode="true"] .page-header .back-area,
+html[data-studio-mode="true"] .story-view .article-info,
+html[data-studio-mode="true"] .article-navigation,
+html[data-studio-mode="true"] .scroll-indicator,
+html[data-studio-mode="true"] .toast-container,
+html[data-studio-mode="true"] #feng-splash,
+html[data-studio-mode="true"] #__vue-devtools-container__ {
+  display: none !important;
+}
+
+/* === 2. 页面缩放、冻结鼠标交互与文本选中 (PRD 原则 3 & §10 #9) === */
+html[data-studio-mode="true"] .main-layout {
+  zoom: var(--studio-zoom, 1.1);
+  pointer-events: none !important;
+  user-select: none !important;
+}
+
+/* === 3. 冻结非受控 CSS 自走过渡与动画，确保逐帧 seek 确定性 (ARCHITECTURE §3.3) === */
+html[data-studio-mode="true"] .main-layout,
+html[data-studio-mode="true"] .main-layout * {
+  transition-duration: 0s !important;
+  transition-delay: 0s !important;
+}
+
+/* === 4. 顶栏歌词区居中与胶囊可读性增强 (PRD §3.2.2, §7.2) === */
+html[data-studio-mode="true"] .title-bar {
+  justify-content: center !important;
+}
+
+html[data-studio-mode="true"] .title-bar .center-group {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  max-width: 100%;
+}
+
+/* === 5. 侧栏隐藏后文章容器居中与底部安全留白 === */
+html[data-studio-mode="true"] .main-content {
+  justify-content: center !important;
+}
+
+html[data-studio-mode="true"] .content-view {
+  max-width: 1160px;
+  width: 100%;
+  margin: 0 auto;
+  /* 底部预留空间，保证文末内容可滚动至 640px 字幕框上方可视区 */
+  padding-bottom: 360px !important;
+}
