@@ -1,7 +1,14 @@
 import { type Plugin, type PreviewServer, type ViteDevServer } from 'vite'
 import fs from 'node:fs'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+
+/**
+ * 判断目标路径是否安全地位于基准目录内部（兼容 Windows 盘符大小写差异）。
+ */
+function isPathInside(parentDir: string, targetPath: string): boolean {
+  const rel = path.relative(parentDir, targetPath)
+  return Boolean(rel && !rel.startsWith('..') && !path.isAbsolute(rel))
+}
 
 /**
  * 创建 `/__studio_fs/` 静态文件读取中间件。
@@ -29,14 +36,13 @@ function createStudioFsMiddleware(studioRoot: string) {
     }
 
     const pathname = req.url.split('?')[0] ?? ''
-    const relativePath = decodeURIComponent(pathname.slice('/__studio_fs/'.length))
+    const relativePath = decodeURIComponent(
+      pathname.slice('/__studio_fs/'.length),
+    ).replace(/^\/+/, '')
     const resolvedPath = path.resolve(normalizedRoot, relativePath)
 
     // 防止 ../ 路径穿越到 studio/ 目录之外
-    if (
-      !resolvedPath.startsWith(normalizedRoot + path.sep) &&
-      resolvedPath !== normalizedRoot
-    ) {
+    if (!isPathInside(normalizedRoot, resolvedPath)) {
       res.statusCode = 403
       res.end('Forbidden')
       return
@@ -49,7 +55,13 @@ function createStudioFsMiddleware(studioRoot: string) {
     } else {
       res.statusCode = 404
       res.setHeader('Content-Type', 'application/json; charset=utf-8')
-      res.end(JSON.stringify({ error: 'File not found in studio/', path: relativePath }))
+      res.end(
+        JSON.stringify({
+          error: 'File not found in studio/',
+          studioRoot: normalizedRoot,
+          path: relativePath,
+        }),
+      )
     }
   }
 }
@@ -57,19 +69,17 @@ function createStudioFsMiddleware(studioRoot: string) {
 /**
  * 风风博客制片厂本地资源挂载与热重载插件。
  *
- * 将项目根目录下的 `studio/` 文件夹映射为开发/预览服务器的 `/__studio_fs/` 路由，
- * 并在开发模式下监听剧本与烘焙音乐 JSON 的变更以推送热重载事件。
+ * 基于 `server.config.root`（即 `frontend/` 目录）向上一级定位仓库根目录下的 `studio/`，
+ * 避免 Vite 打包 `vite.config.ts` 临时文件时 `import.meta.url` 层级偏移导致 404。
  *
  * @returns Vite 插件实例
  */
 export function studioFsPlugin(): Plugin {
-  const projectRoot = path.resolve(fileURLToPath(import.meta.url), '../../..')
-  const studioRoot = path.join(projectRoot, 'studio')
-
   return {
     name: 'vite-plugin-studio-fs',
     apply: 'serve',
     configureServer(server: ViteDevServer) {
+      const studioRoot = path.resolve(server.config.root, '..', 'studio')
       server.middlewares.use(createStudioFsMiddleware(studioRoot))
 
       // 监听 studio/ 目录加入 watcher，支持剧本与音乐文件保存时原地热重载 (PRD F10)
@@ -80,7 +90,7 @@ export function studioFsPlugin(): Plugin {
       server.watcher.on('change', (file) => {
         const resolvedFile = path.resolve(file)
         if (
-          resolvedFile.startsWith(studioRoot + path.sep) &&
+          isPathInside(studioRoot, resolvedFile) &&
           resolvedFile.endsWith('.json')
         ) {
           server.ws.send({
@@ -94,6 +104,7 @@ export function studioFsPlugin(): Plugin {
       })
     },
     configurePreviewServer(server: PreviewServer) {
+      const studioRoot = path.resolve(server.config.root, '..', 'studio')
       server.middlewares.use(createStudioFsMiddleware(studioRoot))
     },
   }
