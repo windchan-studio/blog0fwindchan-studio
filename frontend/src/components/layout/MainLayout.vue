@@ -30,7 +30,8 @@
         </div>
 
         <div class="center-group">
-          <div class="time-display">
+          <StudioLyricBar v-if="studioStore.isStudioMode" />
+          <div v-else class="time-display">
             <div class="time-row">
               <span class="time">{{ currentTime }}</span>
               <span class="divider">/</span>
@@ -128,6 +129,10 @@ import ReflectionLayer from './ReflectionLayer.vue'
 import MobileNavPanel from './MobileNavPanel.vue'
 import ParticleLayer from './ParticleLayer.vue'
 import NavPanel from './NavPanel.vue'
+import StudioLyricBar from '@/studio/components/StudioLyricBar.vue'
+import { useStudioStore } from '@/studio/stores/useStudioStore'
+
+const studioStore = useStudioStore()
 
 // --- 资源导入 ---
 const logo = '/favicon.png'

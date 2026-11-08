@@ -4,9 +4,10 @@
  * 集成了 DOMPurify 以防御针对 Markdown 渲染后生成的 HTML 的 Self-XSS 攻击。
  */
 
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import VueMarkdown from 'vue-markdown-render'
 import DOMPurify from 'dompurify'
+import { getStudioThemeOverride, useTheme } from '@/composables/useTheme'
 
 /**
  * Markdown 渲染配置接口
@@ -52,7 +53,16 @@ const getPurifier = (): typeof DOMPurify => {
  * @description 提供主题动态感知、安全过滤后的 Markdown 配置以及工具函数。
  */
 export function useArticleContent() {
-  const isDarkTheme = ref<boolean>(false)
+  const { isDarkTheme: globalDarkTheme } = useTheme()
+  const isDarkTheme = ref<boolean>(globalDarkTheme.value)
+
+  watch(
+    globalDarkTheme,
+    (val) => {
+      isDarkTheme.value = val
+    },
+    { immediate: true },
+  )
 
   /**
    * 基础 Markdown 渲染配置
@@ -87,11 +97,13 @@ export function useArticleContent() {
 
   onMounted(() => {
     const layout: Element | null = document.querySelector('.main-layout')
-    isDarkTheme.value = layout?.classList.contains('dark-theme') || false
+    if (getStudioThemeOverride() === null && layout) {
+      isDarkTheme.value = layout.classList.contains('dark-theme')
+    }
 
     const observer: MutationObserver = new MutationObserver((mutations: MutationRecord[]) => {
       mutations.forEach((mutation: MutationRecord) => {
-        if (mutation.attributeName === 'class') {
+        if (mutation.attributeName === 'class' && getStudioThemeOverride() === null) {
           const el = mutation.target as HTMLElement
           isDarkTheme.value = el.classList.contains('dark-theme')
         }

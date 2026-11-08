@@ -2,6 +2,7 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
 import { createPinia } from 'pinia'
+import { studioPiniaPlugin } from '@/studio/bridge/studioPiniaPlugin'
 
 // 确保样式引入顺序正确
 import '@/styles/theme/theme.css'
@@ -33,7 +34,9 @@ library.add(faBookOpen, faUsers, faCode, faImages, faPaw, faCog, faHome, faPenNi
 const app = createApp(App)
 
 // 注入状态管理与路由模块
-app.use(createPinia())
+const pinia = createPinia()
+pinia.use(studioPiniaPlugin)
+app.use(pinia)
 app.use(router)
 
 // 全局组件注册

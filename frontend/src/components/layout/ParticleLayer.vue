@@ -8,12 +8,21 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useSettingsStore } from '@/stores/useSettingsStore'
+import { useStudioStore } from '@/studio/stores/useStudioStore'
+import { studioFrameClock } from '@/studio/engine/frameClock'
+import {
+  createMulberry32,
+  hashStringToSeed,
+  positiveMod,
+  triangleWave,
+} from '@/studio/engine/seededRandom'
 
 const props = defineProps<{
   isDarkTheme: boolean
 }>()
 
 const settingsStore = useSettingsStore()
+const studioStore = useStudioStore()
 
 /** 画布引用 */
 const canvasRef = ref<HTMLCanvasElement | null>(null)
@@ -36,14 +45,18 @@ type ShapeType = 'triangle' | 'square' | 'hexagon' | 'diamond' | 'shard' | 'circ
 class Particle {
   x: number
   y: number
+  x0: number
+  y0: number
   vx: number
   vy: number
   size: number
   color: string
   shape: ShapeType
   rotation: number
+  rotation0: number
   rotationSpeed: number
   opacity: number
+  opacity0: number
   opacitySpeed: number
 
   /**
@@ -53,38 +66,75 @@ class Particle {
    * @param colors 当前主题颜色数组
    * @param isDark 是否为暗色模式
    * @param baseSpeed 基础速度配置
+   * @param rand 随机数生成函数（默认 Math.random，演播室模式传入 mulberry32）
    */
-  constructor(w: number, h: number, colors: string[], isDark: boolean, baseSpeed: number) {
-    this.x = Math.random() * w
-    this.y = Math.random() * h
+  constructor(
+    w: number,
+    h: number,
+    colors: string[],
+    isDark: boolean,
+    baseSpeed: number,
+    rand: () => number = Math.random,
+  ) {
+    this.x0 = rand() * w
+    this.y0 = rand() * h
+    this.x = this.x0
+    this.y = this.y0
 
     // 根据主题设定粒子大小范围
-    this.size = isDark ? Math.random() * 4 + 3 : Math.random() * 6 + 4
+    this.size = isDark ? rand() * 4 + 3 : rand() * 6 + 4
 
     // 根据主题设定粒子速度，并应用全局速度配置
     const speed = isDark ? baseSpeed * 0.6 : baseSpeed
-    const angle = Math.random() * Math.PI * 2
+    const angle = rand() * Math.PI * 2
     this.vx = Math.cos(angle) * speed
     this.vy = Math.sin(angle) * speed
 
     // 暗色主题统一使用白色，亮色使用主题颜色
     this.color = isDark
       ? 'rgba(255,255,255,0.4)'
-      : colors[Math.floor(Math.random() * colors.length)]
+      : colors[Math.floor(rand() * colors.length)]
 
     // 根据主题分配形状
     const shapes: ShapeType[] = isDark
       ? ['circle', 'star']
       : ['triangle', 'shard', 'diamond', 'hexagon', 'square']
-    this.shape = shapes[Math.floor(Math.random() * shapes.length)]
+    this.shape = shapes[Math.floor(rand() * shapes.length)]
 
     // 设定旋转属性
-    this.rotation = Math.random() * Math.PI * 2
-    this.rotationSpeed = (Math.random() - 0.5) * 0.02
+    this.rotation0 = rand() * Math.PI * 2
+    this.rotation = this.rotation0
+    this.rotationSpeed = (rand() - 0.5) * 0.02
 
     // 设定透明度及呼吸效果
-    this.opacity = isDark ? Math.random() * 0.4 + 0.6 : 0.8
-    this.opacitySpeed = isDark ? (Math.random() - 0.5) * 0.02 : 0
+    this.opacity0 = isDark ? rand() * 0.4 + 0.6 : 0.8
+    this.opacity = this.opacity0
+    this.opacitySpeed = isDark ? (rand() - 0.5) * 0.02 : 0
+  }
+
+  /**
+   * 演播室模式：根据帧时钟毫秒数 t 直接解析计算位置、旋转与呼吸透明度（ARCHITECTURE §3.5）
+   */
+  evaluateAtTime(w: number, h: number, timeMs: number) {
+    const buffer = 50
+    const spanW = Math.max(1, w + buffer * 2)
+    const spanH = Math.max(1, h + buffer * 2)
+    const k = timeMs * 0.06 // 对齐 60Hz 帧步数
+
+    this.x = positiveMod(this.x0 + buffer + this.vx * k, spanW) - buffer
+    this.y = positiveMod(this.y0 + buffer + this.vy * k, spanH) - buffer
+    this.rotation = this.rotation0 + this.rotationSpeed * k
+
+    if (this.opacitySpeed !== 0) {
+      this.opacity =
+        0.4 +
+        triangleWave(
+          this.opacity0 - 0.4 + Math.abs(this.opacitySpeed) * k,
+          0.6,
+        )
+    } else {
+      this.opacity = this.opacity0
+    }
   }
 
   /**
@@ -228,11 +278,30 @@ const initParticles = () => {
 
   // 从 Store 获取配置
   const { count, baseSpeed } = settingsStore.particles
+  const rand = studioStore.isStudioMode
+    ? createMulberry32(hashStringToSeed(`particles:${studioStore.scriptId || 'studio'}`))
+    : Math.random
 
   particles = []
   for (let i = 0; i < count; i++) {
-    particles.push(new Particle(w, h, colors, props.isDarkTheme, baseSpeed))
+    particles.push(new Particle(w, h, colors, props.isDarkTheme, baseSpeed, rand))
   }
+
+  if (studioStore.isStudioMode) {
+    renderDeterministic(studioFrameClock.currentTimeMs.value)
+  }
+}
+
+const renderDeterministic = (timeMs: number) => {
+  if (!ctx || !canvasRef.value) return
+  const w = canvasRef.value.width
+  const h = canvasRef.value.height
+  ctx.clearRect(0, 0, w, h)
+
+  particles.forEach((p) => {
+    p.evaluateAtTime(w, h, timeMs)
+    p.draw(ctx!)
+  })
 }
 
 const handleResize = () => {
@@ -243,6 +312,10 @@ const handleResize = () => {
 }
 
 const render = () => {
+  if (studioStore.isStudioMode) {
+    renderDeterministic(studioFrameClock.currentTimeMs.value)
+    return
+  }
   if (!ctx || !canvasRef.value) return
   const w = canvasRef.value.width
   const h = canvasRef.value.height
@@ -293,7 +366,38 @@ watch(
   () => props.isDarkTheme,
   () => {
     if (settingsStore.particles.enabled) {
-      setTimeout(initParticles, 100)
+      if (studioStore.isStudioMode) {
+        initParticles()
+      } else {
+        setTimeout(initParticles, 100)
+      }
+    }
+  },
+)
+
+// 演播室模式下监听帧时钟变化与剧本切换
+watch(
+  () => studioFrameClock.currentTimeMs.value,
+  (t) => {
+    if (studioStore.isStudioMode && settingsStore.particles.enabled) {
+      renderDeterministic(t)
+    }
+  },
+)
+
+watch(
+  () => [studioStore.isStudioMode, studioStore.scriptId] as const,
+  ([inStudio]) => {
+    if (!settingsStore.particles.enabled) return
+    if (inStudio) {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId)
+        animationFrameId = null
+      }
+      initParticles()
+    } else {
+      initParticles()
+      render()
     }
   },
 )

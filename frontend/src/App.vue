@@ -12,6 +12,9 @@
 
     <!-- Toast Manager -->
     <ToastManager />
+
+    <!-- Studio 演播室顶层舞台 -->
+    <StudioRoot />
   </div>
 </template>
 
@@ -19,6 +22,7 @@
 import { useArticleContent } from '@/composables/useArticleContent'
 import GlobalModals from '@/components/modal/GlobalModals.vue'
 import ToastManager from '@/components/feedback/ToastManager.vue'
+import StudioRoot from '@/studio/components/StudioRoot.vue'
 
 const { isDarkTheme } = useArticleContent()
 </script>

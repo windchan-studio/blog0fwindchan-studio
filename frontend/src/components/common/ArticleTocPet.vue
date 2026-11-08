@@ -1,9 +1,10 @@
 <!-- frontend/src/components/common/ArticleTocPet.vue -->
 <template>
   <Teleport to="body">
-    <!-- 基础容器：固定在右下角 -->
+    <!-- 基础容器：固定在右下角（演播室模式下让位给 StudioTocPet） -->
     <Transition appear name="pet-appear">
       <div
+        v-if="!studioStore.isStudioMode"
         class="toc-pet-wrapper"
         :class="[currentMood, { 'is-expanded': isExpanded }]"
         v-show="true"
@@ -53,6 +54,7 @@ import { useTocPet } from '@/composables/toc-pet'
 import { useSettingsStore } from '@/stores/useSettingsStore'
 import { useToastStore } from '@/stores/toastStore'
 import { useToast } from '@/composables/useToast'
+import { useStudioStore } from '@/studio/stores/useStudioStore'
 import type { TocItem } from '@/composables/useArticleInfo'
 
 // --- 子组件引入 ---
@@ -68,6 +70,7 @@ const props = defineProps<Props>()
 
 const toastStore = useToastStore()
 const settingsStore = useSettingsStore()
+const studioStore = useStudioStore()
 const { notify } = useToast()
 
 // 引入宠物状态机与全局进度条状态
@@ -215,6 +218,7 @@ const setupObserver = () => {
   if (observer) {
     observer.disconnect()
   }
+  if (studioStore.isStudioMode) return
   observer = new IntersectionObserver(
     (entries) => {
       entries.forEach((entry) => {
